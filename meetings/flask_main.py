@@ -19,6 +19,8 @@ import httplib2
 # Google API for services 
 from apiclient import discovery
 
+import timeblock
+
 ###
 # Globals
 ###
@@ -91,18 +93,28 @@ def getEvents(calid, calsum, credentials, service):
                                        orderBy='startTime',
                                        timeMin=flask.session['begin_date'],
                                        timeMax=flask.session['end_date']).execute()
-        eventlist = []
+        #eventlist = []
+        eventclasslist = []
         for event in events['items']:
             if 'transparency' not in event:
                 starttime = event['start']
                 endtime = event['end']
+                eventclass = timeblock.timeblock()
                 #to determine whether is all day event or if times specified
                 if 'dateTime' in starttime:
-                    eventinfo = starttime['dateTime'], endtime['dateTime'], event['summary']
+                    #eventinfo = starttime['dateTime'], endtime['dateTime'], event['summary']
+                    eventclass.setStart(starttime['dateTime'])
+                    eventclass.setEnd(endtime['dateTime'])
                 else:
-                    eventinfo = starttime['date'], endtime['date'], event['summary']
-                eventlist.append(eventinfo)
-        eventsbycalendar[calsum[count]] = eventlist
+                    #eventinfo = starttime['date'], endtime['date'], event['summary']
+                    eventclass.setStart(starttime['date'])
+                    eventclass.setEnd(endtime['date'])
+                #eventlist.append(eventinfo)
+                eventclass.setSummary(event['summary'])
+                eventclass.setType('event')
+                eventclasslist.append(eventclass)
+        #eventsbycalendar[calsum[count]] = eventlist
+        eventsbycalendar[calsum[count]] = eventclasslist
     return eventsbycalendar
 
 # ADDED FUNCTION:
