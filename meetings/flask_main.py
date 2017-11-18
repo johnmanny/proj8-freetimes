@@ -79,6 +79,13 @@ def choose():
         events = getEvents(calendarids, calsummaries, credentials, gcal_service)
         flask.g.events = events
 
+    # create agenda for day
+    dayAgenda = timeblock.getDayList(flask.session['begin_date'], flask.session['end_date'])
+
+    # populate agenda with events and freetimes by calendar
+    dayAgendaByCal = timeblock.populateDayAgenda(dayAgenda, events)
+    
+
     return render_template('index.html')
 
 ###
@@ -93,7 +100,6 @@ def getEvents(calid, calsum, credentials, service):
                                        orderBy='startTime',
                                        timeMin=flask.session['begin_date'],
                                        timeMax=flask.session['end_date']).execute()
-        #eventlist = []
         eventclasslist = []
         for event in events['items']:
             if 'transparency' not in event:
@@ -102,18 +108,15 @@ def getEvents(calid, calsum, credentials, service):
                 eventclass = timeblock.timeblock()
                 #to determine whether is all day event or if times specified
                 if 'dateTime' in starttime:
-                    #eventinfo = starttime['dateTime'], endtime['dateTime'], event['summary']
                     eventclass.setStart(starttime['dateTime'])
                     eventclass.setEnd(endtime['dateTime'])
                 else:
-                    #eventinfo = starttime['date'], endtime['date'], event['summary']
                     eventclass.setStart(starttime['date'])
                     eventclass.setEnd(endtime['date'])
-                #eventlist.append(eventinfo)
                 eventclass.setSummary(event['summary'])
                 eventclass.setType('event')
+                eventclass.setCalId(ids)
                 eventclasslist.append(eventclass)
-        #eventsbycalendar[calsum[count]] = eventlist
         eventsbycalendar[calsum[count]] = eventclasslist
     return eventsbycalendar
 
