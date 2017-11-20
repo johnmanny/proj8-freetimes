@@ -6,6 +6,8 @@ description: test file for get summary logic
 #import flask_main
 #from flask_main import getSummaries
 import nose
+import arrow
+
 """
 def test_getsummaries():
     calids = ['first', 'third']
