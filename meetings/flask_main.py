@@ -1,5 +1,7 @@
 """
-main file for flask server
+Revision Author: John Nemeth
+Sources: python documentation, class material
+DescriptiOn: main file for flask server
 """
 import flask
 from flask import render_template
@@ -82,31 +84,13 @@ def choose():
         # create list of days
         daysList = timeblock.getDayList(flask.session['begin_date'], flask.session['end_date'])
 
-        # populate agenda with events and freetimes by calendar
+        """
+        # populate dict of daysAgenda by calendar summary
         daysAgendaByCal = timeblock.populateDaysAgendaByCal(daysList, events)
-
+        """
         # populate agenda with consolidated events
         daysAgenda = timeblock.populateDaysAgenda(daysList, events)
         flask.g.agenda = daysAgenda
-        """
-        for days in daysAgenda:
-            print('DAY: ', days)
-            for entries, values in days.items():
-                if entries is 'agenda':
-                    for stuff in values:
-                        print('STUFF: ', stuff)
-                        print('TYPE:  ', stuff.type)
-                        print('START: ', stuff.start)
-                        print('END:   ', stuff.end)
-                        print('-------------------------------')
-        """
-    """
-    # create agenda for day
-    dayAgenda = timeblock.getDayList(flask.session['begin_date'], flask.session['end_date'])
-
-    # populate agenda with events and freetimes by calendar
-    dayAgendaByCal = timeblock.populateDayAgenda(dayAgenda, events)
-    """
 
     return render_template('index.html')
 
@@ -143,15 +127,11 @@ def getEvents(calid, calsum, credentials, service):
                 begin = arrow.get(eventclass.start).replace(tzinfo=tz.tzlocal())
                 last = arrow.get(eventclass.end).replace(tzinfo=tz.tzlocal())
                 lastFloor = last.floor('day')
-                print('EVENT NAME: ', eventclass.summary)
-                print('EVENT START: ', begin)
-                print('EVENT STOP: ', last)
-                
+                 
                 # event spans multiple days
                 if begin <= last.floor('day'):
                     # span is longer or equal to a day
                     if timeblock.spanGreaterThanDay(begin, last) is True:
-                        print('EVENT IS GREATER THAN DAY:', eventclass.summary)
                         time = last - begin
                         # event start and stops exactly on ceil and floor
                         if last == begin.shift(days=time.days):
@@ -162,17 +142,14 @@ def getEvents(calid, calsum, credentials, service):
                             splitEvents = timeblock.splitMultiDay(eventclass)
                             for splitEvent in splitEvents:
                                 eventclasslist.append(splitEvent)
-                        # ends exactly on floor of day
+                        # ends exactly on floor of next day, when should end ceil of intended day
                         elif begin.shift(days=time.days + 1).floor('day') == last:
+                            # fix for floor of next day 
                             last = begin.shift(days=time.days)
                             last = last.ceil('day')
                             eventclass.end = last.isoformat()
-                            print('END OF FLOOR: ', eventclass.summary)
-                            print('CEIL   START: ', eventclass.start)
-                            print('CEIL NEW END  ', eventclass.end)
                             longSpanEvents = timeblock.splitLongEvent(eventclass)
                             for spannEvent in longSpanEvents:
-                                print('SPANEVENT: ', spannEvent.summary)
                                 eventclasslist.append(spannEvent) 
                         # start or end times not at ceil or floor
                         else:
@@ -186,7 +163,6 @@ def getEvents(calid, calsum, credentials, service):
                             eventclasslist.append(spannEvent)
                 # just a good ol' fashioned normal event (between beginning and end of day)
                 else:
-                    #eventclass.setCalId(ids)
                     eventclasslist.append(eventclass)
          
         eventsbycalendar[calsum[count]] = eventclasslist
@@ -233,42 +209,22 @@ def get_gcal_service(credentials):
 # oauth2callback directs to google for valid credentials
 @app.route('/oauth2callback')
 def oauth2callback():
-  """
-  The 'flow' has this one place to call back to.  We'll enter here
-  more than once as steps in the flow are completed, and need to keep
-  track of how far we've gotten. The first time we'll do the first
-  step, the second time we'll skip the first step and do the second,
-  and so on.
-  """
   app.logger.debug("Entering oauth2callback")
   flow =  client.flow_from_clientsecrets(
       CLIENT_SECRET_FILE,
       scope= SCOPES,
       redirect_uri=flask.url_for('oauth2callback', _external=True))
-  ## Note we are *not* redirecting above.  We are noting *where*
-  ## we will redirect to, which is this function. 
   
-  ## The *second* time we enter here, it's a callback 
-  ## with 'code' set in the URL parameter.  If we don't
-  ## see that, it must be the first time through, so we
-  ## need to do step 1. 
   app.logger.debug("Got flow")
   if 'code' not in flask.request.args:
     app.logger.debug("Code not in flask.request.args")
     auth_uri = flow.step1_get_authorize_url()
     return flask.redirect(auth_uri)
-    ## This will redirect back here, but the second time through
-    ## we'll have the 'code' parameter set
   else:
-    ## It's the second time through ... we can tell because
-    ## we got the 'code' argument in the URL.
     app.logger.debug("Code was in flask.request.args")
     auth_code = flask.request.args.get('code')
     credentials = flow.step2_exchange(auth_code)
     flask.session['credentials'] = credentials.to_json()
-    ## Now I can build the service and execute the query,
-    ## but for the moment I'll just log it and go back to
-    ## the main screen
     app.logger.debug("Got credentials")
     return flask.redirect(flask.url_for('choose'))
 
@@ -375,13 +331,6 @@ def next_day(isotext):
 ####
   
 def list_calendars(service):
-    """
-    Given a google 'service' object, return a list of
-    calendars.  Each calendar is represented by a dict.
-    The returned list is sorted to have
-    the primary calendar first, and selected (that is, displayed in
-    Google Calendars web app) calendars before unselected calendars.
-    """
     app.logger.debug("Entering list_calendars")  
     calendar_list = service.calendarList().list().execute()["items"]
     result = [ ]
@@ -396,7 +345,6 @@ def list_calendars(service):
         # Optional binary attributes with False as default
         selected = ("selected" in cal) and cal["selected"]
         primary = ("primary" in cal) and cal["primary"]
-        
 
         result.append(
           { "kind": kind,

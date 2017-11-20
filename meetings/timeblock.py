@@ -1,7 +1,7 @@
 """
-author:
-sources:
-description:
+Author: John Nemeth
+Sources: Class Material
+Description: implementation file for functions used to manipulate agendas
 """
 
 import arrow
@@ -88,24 +88,15 @@ def populateDaysAgenda(daysList, eventsByCalSum):
     
     # make sure entries in presentable form
     for days in daysAgenda:
-        print('DAY START:', day['start'])
-        for item in days['agenda']:
-            print('ITEM SUM: ', item.summary)
-            print('ITEM START', item.start)
-            print('ITEM END: ', item.end)
-        print('*****************************************')
         days['agenda'] = sortByDates(days['agenda'])
-        print('AFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFTER SORRRRT')
-        for item in days['agenda']:
-            print('ITEM SUM: ', item.summary)
-            print('ITEM START', item.start)
-            print('ITEM END: ', item.end)
         days['agenda'] = freeTimeMaint(days['agenda'])
     return daysAgenda
 
 #######################
-# splits events longer than a day that don't start or end on ceil or floor
+# splits events longer than a day 
 def splitLongEvent(event):
+    
+    # insert event from first day
     newEvent = timeblock(event.start,
                          arrow.get(event.start).ceil('day').isoformat(),
                          event.type,
@@ -117,6 +108,7 @@ def splitLongEvent(event):
     indexTime = indexTime.shift(days=1)
     indexTime = indexTime.floor('day')
     
+    # for events in days that are beyond the first day
     while indexTime != eventEndTime.floor('day'):
         newEvent = timeblock(indexTime.isoformat(),
                              indexTime.ceil('day').isoformat(),
@@ -132,19 +124,8 @@ def splitLongEvent(event):
                          event.type,
                          event.summary)
     newList.append(newEvent)
+    
     return newList
-"""
-######################
-# split event that stops in ceil of day
-def splitCeilEndEvent(event):
-    newList = []
-    eventStart = arrow.get(event.start)
-    # first day
-    newEvent = timeblock(event.start,
-                         arrow.get(event.start).ceil('day').isoformat(),
-                         event.type,
-                         event.summary)
-"""   
 
 #######################
 # split short multiple-day events
@@ -175,7 +156,7 @@ def splitMultiDay(event):
     return splitEvent
 
 #######################
-# function not used for current implementation, but possibly for future (partly operational)
+# for organizing agendas by calendarid
 def populateDaysAgendaByCal(daysAgenda, eventsByCalSum):
     
     ##### create new lists/dicts ######
@@ -204,24 +185,8 @@ def populateDaysAgendaByCal(daysAgenda, eventsByCalSum):
                 if eventEnd <= dayEnd and eventStart >= dayStart:
                     newDay = cutUpFreeTime(day, event)
                     daysAgendaByCal[calSum][count] = newDay
-    #temporary debugging statement
-    """ 
-    for calsums, agenda in daysAgendaByCal.items():
-        print('CALENDAR SUMMARY: ', calsums)
-        print('##############################################')
-        for days in agenda:
-            print('DAY: ', days)
-            for entries, values in days.items():
-                if entries is 'agenda':
-                    for stuff in values:
-                        print('STUFF: ', stuff)
-                        print('TYPE:  ', stuff.type)
-                        print('START: ', stuff.start)
-                        print('END:   ', stuff.end)
-                        print('-------------------------------')
     
     return daysAgendaByCal
-    """
 
 ###################################
 # essentially creates new freetime blocks
@@ -273,7 +238,7 @@ def cutUpFreeTime(day, event):
     return newDay
 
 ##################################################
-# maintenance to fix overlapping event or free end times
+# fix overlapping block end/start times
 def freeTimeMaint(aAgenda):
     agenda = []
     for entry in aAgenda:
@@ -297,7 +262,7 @@ def freeTimeMaint(aAgenda):
                     elif eventEnd > freeStart and eventEnd < freeEnd:
                         agenda[index].start = agenda[eventIndex].end
                 index += 1
-        # if block type is free
+        # block type is free
         else:
             # check if freetime time length < 1 minute
             time = arrow.get(timeBlock.end) - arrow.get(timeBlock.start) 
@@ -322,27 +287,15 @@ def freeTimeMaint(aAgenda):
 ##################################################
 # to sort by start time 
 def sortByDates(agenda):
-    blockSort = []
-    for block in agenda:
-        blockSort.append(arrow.get(block.start))
-    
-    sortedBlocks = []
-    blockSort.sort()
-    for index, time in enumerate(blockSort):
-        # flag to keep from double insertion
-        sortedForIndex = False 
-        for count, blocks in enumerate(agenda):
-            if arrow.get(blocks.start) == time and sortedForIndex == False:
-                print('INDEX ON SORT', index)
-                sortedBlocks.append(agenda[count])
-                sortedForIndex = True
- 
-    return sortedBlocks
 
+    # simple python sort
+    agenda = sorted(agenda, key=lambda timeblock: arrow.get(timeblock.start))
+    return agenda
+
+##########################################
+# to check if event is longer than a day
 def spanGreaterThanDay(start, end):
-    
     time = end - start
-    print(time.days)
     if time.days >= 1:
         return True
     else:
