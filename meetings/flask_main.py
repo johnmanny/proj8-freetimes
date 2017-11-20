@@ -79,12 +79,35 @@ def choose():
         events = getEvents(calendarids, calsummaries, credentials, gcal_service)
         flask.g.events = events
 
+        # create list of days
+        daysList = timeblock.getDayList(flask.session['begin_date'], flask.session['end_date'])
+
+        # populate agenda with events and freetimes by calendar
+        daysAgendaByCal = timeblock.populateDaysAgendaByCal(daysList, events)
+
+        # populate agenda with consolidated events
+        daysAgenda = timeblock.populateDaysAgenda(daysList, events)
+        flask.g.agenda = daysAgenda
+
+        """
+        for days in daysAgenda:
+            print('DAY: ', days)
+            for entries, values in days.items():
+                if entries is 'agenda':
+                    for stuff in values:
+                        print('STUFF: ', stuff)
+                        print('TYPE:  ', stuff.type)
+                        print('START: ', stuff.start)
+                        print('END:   ', stuff.end)
+                        print('-------------------------------')
+        """ 
+    """
     # create agenda for day
     dayAgenda = timeblock.getDayList(flask.session['begin_date'], flask.session['end_date'])
 
     # populate agenda with events and freetimes by calendar
     dayAgendaByCal = timeblock.populateDayAgenda(dayAgenda, events)
-    
+    """
 
     return render_template('index.html')
 
@@ -105,17 +128,20 @@ def getEvents(calid, calsum, credentials, service):
             if 'transparency' not in event:
                 starttime = event['start']
                 endtime = event['end']
-                eventclass = timeblock.timeblock()
+                
                 #to determine whether is all day event or if times specified
                 if 'dateTime' in starttime:
-                    eventclass.setStart(starttime['dateTime'])
-                    eventclass.setEnd(endtime['dateTime'])
+                    start = starttime['dateTime']
+                    end = endtime['dateTime']
                 else:
-                    eventclass.setStart(starttime['date'])
-                    eventclass.setEnd(endtime['date'])
-                eventclass.setSummary(event['summary'])
-                eventclass.setType('event')
-                eventclass.setCalId(ids)
+                    start = starttime['date']
+                    end = endtime['date']
+                if 'summary' in event:
+                    summ = event['summary']
+                else:
+                    summ = 'no title'
+                eventclass = timeblock.timeblock(start, end, 'event', summ)
+                #eventclass.setCalId(ids)
                 eventclasslist.append(eventclass)
         eventsbycalendar[calsum[count]] = eventclasslist
     return eventsbycalendar
@@ -221,6 +247,8 @@ def setrange():
     app.logger.debug("Setrange parsed {} - {}  dates as {} - {}".format(
       daterange_parts[0], daterange_parts[1], 
       flask.session['begin_date'], flask.session['end_date']))
+    end = arrow.get(flask.session['end_date'])
+    flask.session['end_date'] = end.shift(minutes=-1).isoformat()
     return flask.redirect(flask.url_for("choose"))
 
 ####

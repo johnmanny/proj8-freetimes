@@ -62,7 +62,7 @@
 </form>
 
 <!-- create form to pass into /choose -->
-{% if g.calendars is defined and g.events is not defined %}
+{% if g.calendars is defined %}
   <br /><h3>Choose calendars to display events between dates chosen:</h3>
   <form id="calchoose" method="POST" action="/choose">
       {% for cal in g.calendars if cal.selected %}
@@ -98,19 +98,18 @@
   </form>
 {% endif %}
 
-<!-- outputting eventlist of each calendar -->
-{% if g.events is defined %}
+<!-- outputting agenda of events/freetimes -->
+{% if g.agenda is defined %}
   <div class="row">
-  {% for calsum, eventlist in g.events.items() %}
+  {% for day in g.agenda %}
     <div class="col-md-2">
       <div class="row" style="border-style: solid">
-        {{ calsum }}
+        {{ day["start"] | fmtdate }}
       </div>
-          {% for event in eventlist %}
+          {% for block in day["agenda"] %}
             <div class="row" style="border-style: dashed; border-width: 1px;">
-           {{ event.summary }}<br />
-           from: {{ event.start | fmtdate }} {{ event.start | fmttime}}<br />
-           to: {{ event.end | fmtdate }} {{ event.end | fmttime}} 
+           {{ block.summary }}<br />
+           from: {{ block.start | fmttime}} to: {{ block.end | fmttime}} 
            <br />
            </div>
           {% endfor %}
