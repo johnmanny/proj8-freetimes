@@ -88,7 +88,6 @@ def choose():
         # populate agenda with consolidated events
         daysAgenda = timeblock.populateDaysAgenda(daysList, events)
         flask.g.agenda = daysAgenda
-
         """
         for days in daysAgenda:
             print('DAY: ', days)
@@ -100,7 +99,7 @@ def choose():
                         print('START: ', stuff.start)
                         print('END:   ', stuff.end)
                         print('-------------------------------')
-        """ 
+        """
     """
     # create agenda for day
     dayAgenda = timeblock.getDayList(flask.session['begin_date'], flask.session['end_date'])
@@ -141,8 +140,43 @@ def getEvents(calid, calsum, credentials, service):
                 else:
                     summ = 'no title'
                 eventclass = timeblock.timeblock(start, end, 'event', summ)
-                #eventclass.setCalId(ids)
-                eventclasslist.append(eventclass)
+                begin = arrow.get(eventclass.start).replace(tzinfo=tz.tzlocal())
+                last = arrow.get(eventclass.end).replace(tzinfo=tz.tzlocal())
+                lastFloor = last.floor('day')
+                print('EVENT NAME: ', eventclass.summary)
+                print('EVENT START: ', begin)
+                print('EVENT STOP: ', last)
+                
+                # event spans multiple days
+                if begin <= last.floor('day'):
+                    # span is longer or equal to a day
+                    if timeblock.spanGreaterThanDay(begin, last) is True:
+                        print('EVENT IS GREATER THAN DAY:', eventclass.summary)
+                        time = last - begin
+                        # event start and stops exactly on ceil or floor
+                        if last == begin.shift(days=time.days) and last == lastFloor:
+                            # fix for multiple day all day events 
+                            last = begin.shift(days=time.days - 1)
+                            last = last.ceil('day')
+                            eventclass.end = last.isoformat()
+                            splitEvents = timeblock.splitMultiDay(eventclass)
+                            for splitEvent in splitEvents:
+                                eventclasslist.append(splitEvent)
+                        # start or end times not at ceil or floor
+                        else:
+                            longSpanEvents = timeblock.splitLongEvent(eventclass)
+                            for spannEvent in longSpanEvents:
+                                eventclasslist.append(spannEvent)
+                    # shorter than a day
+                    else:
+                        shortSpanEvents = timeblock.splitShortEvent(eventclass)
+                        for spannEvent in shortSpanEvents:
+                            eventclasslist.append(spannEvent)
+                # just a good ol' fashioned normal event (between beginning and end of day)
+                else:
+                    #eventclass.setCalId(ids)
+                    eventclasslist.append(eventclass)
+         
         eventsbycalendar[calsum[count]] = eventclasslist
     return eventsbycalendar
 
@@ -248,7 +282,9 @@ def setrange():
       daterange_parts[0], daterange_parts[1], 
       flask.session['begin_date'], flask.session['end_date']))
     end = arrow.get(flask.session['end_date'])
-    flask.session['end_date'] = end.shift(minutes=-1).isoformat()
+    end = end.shift(minutes=-1)
+    #print('END DATE CEILING: ', end.ceil('day').isoformat())
+    flask.session['end_date'] = end.ceil('day').isoformat()
     return flask.redirect(flask.url_for("choose"))
 
 ####
