@@ -153,8 +153,8 @@ def getEvents(calid, calsum, credentials, service):
                     if timeblock.spanGreaterThanDay(begin, last) is True:
                         print('EVENT IS GREATER THAN DAY:', eventclass.summary)
                         time = last - begin
-                        # event start and stops exactly on ceil or floor
-                        if last == begin.shift(days=time.days) and last == lastFloor:
+                        # event start and stops exactly on ceil and floor
+                        if last == begin.shift(days=time.days):
                             # fix for multiple day all day events 
                             last = begin.shift(days=time.days - 1)
                             last = last.ceil('day')
@@ -162,6 +162,18 @@ def getEvents(calid, calsum, credentials, service):
                             splitEvents = timeblock.splitMultiDay(eventclass)
                             for splitEvent in splitEvents:
                                 eventclasslist.append(splitEvent)
+                        # ends exactly on floor of day
+                        elif begin.shift(days=time.days + 1).floor('day') == last:
+                            last = begin.shift(days=time.days)
+                            last = last.ceil('day')
+                            eventclass.end = last.isoformat()
+                            print('END OF FLOOR: ', eventclass.summary)
+                            print('CEIL   START: ', eventclass.start)
+                            print('CEIL NEW END  ', eventclass.end)
+                            longSpanEvents = timeblock.splitLongEvent(eventclass)
+                            for spannEvent in longSpanEvents:
+                                print('SPANEVENT: ', spannEvent.summary)
+                                eventclasslist.append(spannEvent) 
                         # start or end times not at ceil or floor
                         else:
                             longSpanEvents = timeblock.splitLongEvent(eventclass)

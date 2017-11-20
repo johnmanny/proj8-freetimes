@@ -88,7 +88,18 @@ def populateDaysAgenda(daysList, eventsByCalSum):
     
     # make sure entries in presentable form
     for days in daysAgenda:
+        print('DAY START:', day['start'])
+        for item in days['agenda']:
+            print('ITEM SUM: ', item.summary)
+            print('ITEM START', item.start)
+            print('ITEM END: ', item.end)
+        print('*****************************************')
         days['agenda'] = sortByDates(days['agenda'])
+        print('AFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFTER SORRRRT')
+        for item in days['agenda']:
+            print('ITEM SUM: ', item.summary)
+            print('ITEM START', item.start)
+            print('ITEM END: ', item.end)
         days['agenda'] = freeTimeMaint(days['agenda'])
     return daysAgenda
 
@@ -122,6 +133,18 @@ def splitLongEvent(event):
                          event.summary)
     newList.append(newEvent)
     return newList
+"""
+######################
+# split event that stops in ceil of day
+def splitCeilEndEvent(event):
+    newList = []
+    eventStart = arrow.get(event.start)
+    # first day
+    newEvent = timeblock(event.start,
+                         arrow.get(event.start).ceil('day').isoformat(),
+                         event.type,
+                         event.summary)
+"""   
 
 #######################
 # split short multiple-day events
@@ -306,10 +329,13 @@ def sortByDates(agenda):
     sortedBlocks = []
     blockSort.sort()
     for index, time in enumerate(blockSort):
-        
-        for blocks in agenda:
-            if arrow.get(blocks.start) == time:
-                sortedBlocks.append(blocks)
+        # flag to keep from double insertion
+        sortedForIndex = False 
+        for count, blocks in enumerate(agenda):
+            if arrow.get(blocks.start) == time and sortedForIndex == False:
+                print('INDEX ON SORT', index)
+                sortedBlocks.append(agenda[count])
+                sortedForIndex = True
  
     return sortedBlocks
 
