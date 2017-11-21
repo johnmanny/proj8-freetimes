@@ -87,7 +87,7 @@ def fixEventTimes(event):
     last = arrow.get(event.end).replace(tzinfo=tz.tzlocal())
     lastFloor = last.floor('day')
     ### 1. event spans multiple days
-    if begin <= last.floor('day'):
+    if begin < last.floor('day'):
         time = last - begin
         ### a. event start and stops exactly on ceil and floor
         if last == begin.shift(days=time.days):
