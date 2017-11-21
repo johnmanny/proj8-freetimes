@@ -90,7 +90,7 @@ def choose():
         """
         # populate agenda with consolidated events
         daysAgenda = timeblock.populateDaysAgenda(daysList, events)
-        flask.g.agenda = daysAgenda
+        flask.g.agenda = timeblock.getEventsInRange(daysAgenda, flask.session['begin_time'], flask.session['end_time'])
 
     return render_template('index.html')
 
@@ -124,47 +124,15 @@ def getEvents(calid, calsum, credentials, service):
                 else:
                     summ = 'no title'
                 eventclass = timeblock.timeblock(start, end, 'event', summ)
-                begin = arrow.get(eventclass.start).replace(tzinfo=tz.tzlocal())
-                last = arrow.get(eventclass.end).replace(tzinfo=tz.tzlocal())
-                lastFloor = last.floor('day')
-                 
-                # event spans multiple days
-                if begin <= last.floor('day'):
-                    # span is longer or equal to a day
-                    if timeblock.spanGreaterThanDay(begin, last) is True:
-                        time = last - begin
-                        # event start and stops exactly on ceil and floor
-                        if last == begin.shift(days=time.days):
-                            # fix for multiple day all day events 
-                            last = begin.shift(days=time.days - 1)
-                            last = last.ceil('day')
-                            eventclass.end = last.isoformat()
-                            splitEvents = timeblock.splitMultiDay(eventclass)
-                            for splitEvent in splitEvents:
-                                eventclasslist.append(splitEvent)
-                        # ends exactly on floor of next day, when should end ceil of intended day
-                        elif begin.shift(days=time.days + 1).floor('day') == last:
-                            # fix for floor of next day 
-                            last = begin.shift(days=time.days)
-                            last = last.ceil('day')
-                            eventclass.end = last.isoformat()
-                            longSpanEvents = timeblock.splitLongEvent(eventclass)
-                            for spannEvent in longSpanEvents:
-                                eventclasslist.append(spannEvent) 
-                        # start or end times not at ceil or floor
-                        else:
-                            longSpanEvents = timeblock.splitLongEvent(eventclass)
-                            for spannEvent in longSpanEvents:
-                                eventclasslist.append(spannEvent)
-                    # shorter than a day
-                    else:
-                        shortSpanEvents = timeblock.splitShortEvent(eventclass)
-                        for spannEvent in shortSpanEvents:
-                            eventclasslist.append(spannEvent)
-                # just a good ol' fashioned normal event (between beginning and end of day)
-                else:
-                    eventclasslist.append(eventclass)
-         
+
+                # to split events if they include multiple days
+                passedEvent = timeblock.fixEventTimes(eventclass)
+                try:
+                    for aEvent in passedEvent:
+                        eventclasslist.append(aEvent)
+                except TypeError:
+                    eventclasslist.append(passedEvent)
+        
         eventsbycalendar[calsum[count]] = eventclasslist
     return eventsbycalendar
 
@@ -253,6 +221,8 @@ def setrange():
     end = end.shift(minutes=-1)
     #print('END DATE CEILING: ', end.ceil('day').isoformat())
     flask.session['end_date'] = end.ceil('day').isoformat()
+    flask.session["begin_time"] = interpret_time(request.form.get('timestart'))
+    flask.session["end_time"] = interpret_time(request.form.get('timeend'))
     return flask.redirect(flask.url_for("choose"))
 
 ####
@@ -271,8 +241,8 @@ def init_session_values():
         tomorrow.format("MM/DD/YYYY"),
         nextweek.format("MM/DD/YYYY"))
     # Default time span each day, 8 to 5
-    flask.session["begin_time"] = interpret_time("9am")
-    flask.session["end_time"] = interpret_time("5pm")
+    #flask.session["begin_time"] = interpret_time("9am")
+    #flask.session["end_time"] = interpret_time("5pm")
 
 def interpret_time( text ):
     """

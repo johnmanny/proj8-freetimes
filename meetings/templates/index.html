@@ -33,15 +33,28 @@
   {% endif %}
 {% endwith %}
 
-<h2>Date range</h2>
-  <form action="/setrange" method="post">
-  <input type="text" name="daterange" size="12"
-    {% if session.daterange is defined %}
-         value="{{session.daterange}}"
-    {% endif %}
-     class="pull-down"
-     style="background: #fff; cursor: pointer; padding: 5px 10px;
-     border: 1px solid #ccc; width: 12em" >
+<h2>Date/Time Range</h2>
+  <div class="row">
+    <form action="/setrange" method="post">
+    <input type="text" name="daterange" size="12"
+      {% if session.daterange is defined %}
+           value="{{session.daterange}}"
+      {% endif %}
+       class="pull-down"
+       style="background: #fff; cursor: pointer; padding: 5px 10px;
+       border: 1px solid #ccc; width: 12em" >
+     From:
+     <input type="time" name="timestart" 
+     {% if session.begin_time is defined %}
+         value="{{ session.begin_time | fmttime }}"
+     {% endif %}
+     >
+     To:
+     <input type="time" name="timeend"
+     {% if session.end_time is defined %}
+         value="{{ session.end_time | fmttime }}"
+     {% endif %}
+     >
   <script type="text/javascript">
   $(function() {
   $('input[name="daterange"]').daterangepicker(
@@ -58,7 +71,8 @@
        );
     });
   </script>
-<br /><input type="submit" value="Select Range" />
+<input type="submit" value="Select Range" />
+</div>
 </form>
 
 <!-- create form to pass into /choose -->

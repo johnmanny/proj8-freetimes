@@ -9,12 +9,6 @@ from dateutil import tz
 
 class timeblock:
 
-    def __init__(self):
-        self.start = None
-        self.end = None
-        self.type = None
-        self.summary = 'none'
-    
     def __init__(self, first, last, aType, summ):
         self.start = first
         self.end = last
@@ -58,6 +52,64 @@ def getDayList(beginDate, endDate):
     
     return daysList
 
+###############################
+# get events between timerange
+def getEventsInRange(daysAgenda, begin, end):
+    beginTime = arrow.get(begin)
+    endTime = arrow.get(end)
+    
+    for day in daysAgenda:
+        index = 0
+        #for count, block in enumerate(day['agenda']):
+        while index < len(day['agenda']):
+            blockEnd = arrow.get(day['agenda'][index].end)
+            blockStart = arrow.get(day['agenda'][index].start)
+            # very temporary workaround for current implementation
+            newBegin = arrow.get(blockStart.format('YYYY-MM-DD') + ' ' + beginTime.format('HH:mm:ss')).replace(tzinfo=tz.tzlocal())
+            newEnd = arrow.get(blockEnd.format('YYYY-MM-DD') + ' ' + endTime.format('HH:mm:ss')).replace(tzinfo=tz.tzlocal())
+            
+            if blockEnd <= newBegin or blockStart >= newEnd:
+                del day['agenda'][index]
+                continue 
+            if blockEnd > newEnd:
+                day['agenda'][index].end = newEnd.isoformat()
+            if blockStart < newBegin:
+                day['agenda'][index].start = newBegin.isoformat()
+            index += 1 
+    
+    return daysAgenda 
+
+################################
+# fixes event times (given: single event | returns: single or list of multiple event(s))
+def fixEventTimes(event):
+    
+    begin = arrow.get(event.start).replace(tzinfo=tz.tzlocal())
+    last = arrow.get(event.end).replace(tzinfo=tz.tzlocal())
+    lastFloor = last.floor('day')
+    ### 1. event spans multiple days
+    if begin <= last.floor('day'):
+        time = last - begin
+        ### a. event start and stops exactly on ceil and floor
+        if last == begin.shift(days=time.days):
+            # fix for multiple day all day events 
+            last = begin.shift(days=time.days - 1)
+            last = last.ceil('day')
+            event.end = last.isoformat()
+            return splitMultiDay(event)
+        ### b. ends exactly on floor of next day, when should end ceil of intended day
+        elif begin.shift(days=time.days + 1).floor('day') == last:
+            # fix for floor of next day 
+            last = begin.shift(days=time.days)
+            last = last.ceil('day')
+            event.end = last.isoformat()
+            return splitLongEvent(event)
+        ### c. start or end times not at ceil or floor
+        else:
+            return splitLongEvent(event)
+    ### just a good ol' fashioned normal event (between beginning and end of day)
+    else:
+        return event
+         
 ############################
 # consolidate all events into one 'agenda'
 def populateDaysAgenda(daysList, eventsByCalSum):
@@ -93,7 +145,7 @@ def populateDaysAgenda(daysList, eventsByCalSum):
     return daysAgenda
 
 #######################
-# splits events longer than a day 
+# splits events that span > 1 day
 def splitLongEvent(event):
     
     # insert event from first day
@@ -126,22 +178,6 @@ def splitLongEvent(event):
     newList.append(newEvent)
     
     return newList
-
-#######################
-# split short multiple-day events
-def splitShortEvent(event):
-    initialEvent = timeblock(event.start,
-                             arrow.get(event.start).ceil('day').isoformat(),
-                             event.type,
-                             event.summary)
-    secondEvent = timeblock(arrow.get(event.end).floor('day').isoformat(),
-                            event.end,
-                            event.type,
-                            event.summary)
-    newEventList = []
-    newEventList.append(initialEvent)
-    newEventList.append(secondEvent)
-    return newEventList
 
 #######################
 # split multi day event (on ceil and floor)
